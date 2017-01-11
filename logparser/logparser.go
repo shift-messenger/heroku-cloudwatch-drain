@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"strings"
+	"bytes"
 )
 
 // A ParseFunc receives a single raw (unparsed) log entry and parses it into a
@@ -62,7 +64,14 @@ func (p *logParser) parse() (*LogEntry, error) {
 		return nil, fmt.Errorf("failed to skip to MSG: %s", err)
 	}
 
-	message := app + "[" + process + "]: " + string(p.b[p.cursor:])
+	var msg string
+	if process == "router" {
+		msg = parseRouterLogMessage(string(p.b[p.cursor:]))
+	} else {
+		msg = string(p.b[p.cursor:])
+	}
+	message := app + "[" + process + "]: " + msg
+
 
 	return &LogEntry{
 		Time:    t,
@@ -98,4 +107,30 @@ func (p *logParser) nextWord() (string, error) {
 	}
 	end := p.cursor - 1
 	return string(p.b[start:end]), nil
+}
+
+// removes the keys from the key=value pairs in the heroku router log message
+func parseRouterLogMessage(s string) string {
+	words := strings.Fields(s)
+
+	var buffer bytes.Buffer
+	for i := 0; i < len(words); i++ {
+		var split []string = strings.Split(words[i], "=")
+		var key string = split[0]
+		var value string = split[1]
+		if key == "host" || key == "request_id" || key == "dyno" {
+			buffer.WriteString("\"")
+			buffer.WriteString(value)
+			buffer.WriteString("\"")
+		} else if key == "connect" || key == "service" {
+			buffer.WriteString(value[:len(value)-2])
+		} else {
+			buffer.WriteString(value)
+		}
+
+		if i < len(words)-1 {
+			buffer.WriteString(" ")
+		}
+	}
+	return buffer.String()
 }

@@ -14,6 +14,12 @@ func TestParseValidMessage(t *testing.T) {
 	assert.WithinDuration(t, time.Date(2016, 10, 15, 8, 59, 8, 723822000, time.UTC), entry.Time, time.Microsecond)
 }
 
+func TestParseHerokuRouterMessage(t *testing.T) {
+	entry, err := Parse([]byte(`1119 <40>1 2012-11-30T06:45:26+00:00 host heroku router - at=info method=GET path="/api/v1/places/7285/groups/6133" host=shiftmessenger-api.herokuapp.com request_id=c8fa11d0-fdae-486d-a6cf-8adf2fdb8bb7 fwd="174.227.132.4" dyno=web.2 connect=1ms service=3375ms status=200 bytes=91021`))
+	assert.NoError(t, err)
+	assert.Equal(t, "heroku[router]: info GET \"/api/v1/places/7285/groups/6133\" \"shiftmessenger-api.herokuapp.com\" \"c8fa11d0-fdae-486d-a6cf-8adf2fdb8bb7\" \"174.227.132.4\" \"web.2\" 1 3375 200 91021", entry.Message)
+}
+
 func TestParseInvalidMessages(t *testing.T) {
 	tests := []string{
 		``,
